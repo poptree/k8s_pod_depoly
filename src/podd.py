@@ -2,6 +2,7 @@ import os
 import os.path as osp
 import click
 import json
+import yaml
 import sys
 import getpass
 import subprocess
@@ -39,8 +40,9 @@ def get_pods_num():
 @click.option('-m', '--memory', default="4Gi")
 @click.option('-t', '--template', default=None)
 @click.option('-e', '--exp', default=None)
+@click.option('-a', '--args', default=None)
 # @click.argument('exp')
-def create_pod(ngpu, cpu, memory, template, exp):
+def create_pod(ngpu, cpu, memory, template, exp, args):
     out_pods_str = subprocess.getoutput(f'export KUBECONFIG=/etc/kubernetes/admin.conf && kubectl get pods --namespace {getpass.getuser()} | wc -l')
     out_jobs_str = subprocess.getoutput(f'export KUBECONFIG=/etc/kubernetes/admin.conf && kubectl get jobs --namespace {getpass.getuser()} | wc -l')
     if 'No' not in out_pods_str:
@@ -55,26 +57,32 @@ def create_pod(ngpu, cpu, memory, template, exp):
     
     assert exp is not None, "Exp cannot be empty"
     
-    exp = json.load(open(exp, 'r'))
-    name = getpass.getuser() + '-' + exp['name'] + datetime.now().strftime("-%m-%d-%H-%M-%S") + str(hash(exp))
+    exp = yaml.load(open(exp, 'r'), Loader=yaml.FullLoader)
+    if args is not None:
+      exp["cmd"] = args
+    print(yaml.dump(exp, indent=2))
+    name = getpass.getuser() + '-' + exp['name'] + datetime.now().strftime("-%m-%d-%H-%M-%S")
     if template is not None:
         # yml_dict = json.load(open(template, 'r'))
         # yml_dict = defaultdict(lambda: defaultdict(dict), yml_dict)
-        nested_dict = lambda: defaultdict(nested_dict)
-        yml_dict = nested_dict()
-        yml_dict.update(json.load(open(template, 'r')))
+        # nested_dict = lambda: defaultdict(nested_dict)
+        # yml_dict = nested_dict()
+        # yml_dict.update(yaml.load(open(template, 'r'), Loader=yaml.FullLoader))
         # exp = nested_dict().update(json.load(open(exp, 'r')))
-        
+        yml_dict = yaml.load(open(template, 'r'), Loader=yaml.FullLoader)
         yml_dict["metadata"]["name"] = name
         yml_dict["metadata"]["namespace"] = "default" if "namespace" not in exp else exp["namespace"]
         
+        yml_dict["metadata"]["labels"] = yml_dict["metadata"]["labels"] if "labels" in yml_dict["metadata"] else {}
+        
         yml_dict["metadata"]["labels"]["app"] = "default" if "labels" not in exp else exp["labels"]
         
-        yml_dict["spec"]["containers"]["image"] = yml_dict["spec"]["containers"]["image"] if "image" not in exp else exp["image"]
-        yml_dict["spec"]["containers"]["args"] = ["bash"] if "args" not in exp else exp["args"]
-        yml_dict["spec"]["containers"]["resources"]["limits"]["nvidia.com/gpu"] = ngpu
-        yml_dict["spec"]["containers"]["resources"]["limits"]["cpu"] = cpu
-        yml_dict["spec"]["containers"]["resources"]["limits"]["memory"] = memory
+        yml_dict["spec"]["containers"][0]["image"] = yml_dict["spec"]["containers"]["image"] if "image" not in exp else exp["image"]
+        yml_dict["spec"]["containers"][0]["args"] = ["bash"] if "cmd" not in exp else [exp["cmd"]]
+        yml_dict["spec"]["containers"][0]["resources"]["limits"]["nvidia.com/gpu"] = ngpu
+        yml_dict["spec"]["containers"][0]["resources"]["limits"]["cpu"] = cpu
+        yml_dict["spec"]["containers"][0]["resources"]["limits"]["memory"] = memory
+        yml_str = yaml.dump(yml_dict, indent=2)
          
     else:
         yml_str = f"apiVersion: v1\n\
@@ -110,6 +118,7 @@ spec:\n\
     with open('tmp.yml', 'w') as f:
         f.write(yml_str)
     print('Creating a Pod with config\n' + json.dumps(exp, indent=2))
+    print(yml_str)
     os.system('export KUBECONFIG=/etc/kubernetes/admin.conf && kubectl apply -f tmp.yml && rm -rf tmp.yml')
 
 @click.command()
@@ -200,7 +209,7 @@ spec:\n\
               name: algo-nas"
     with open('tmp.yml', 'w') as f:
         f.write(yml_str)
-    print('Creating a Job with config\n' + json.dumps(exp, indent=2))
+    print('Creating a Job with config\n' + yaml.dump(exp, indent=2))
     os.system('export KUBECONFIG=/etc/kubernetes/admin.conf && kubectl apply -f tmp.yml && rm -rf tmp.yml')
 
 @click.command()

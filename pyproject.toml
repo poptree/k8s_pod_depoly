@@ -11,19 +11,20 @@ requires-python = ">=3.6"
 dependencies = [
 ]
 
-
+[tool.setuptools.packages.find]
+include = ["src"]
 
 [project.scripts]
-podd="podd:cli"
-plist="podd:get_pods_list"
-jlist="podd:get_jobs_list"
-pnum="podd:get_pods_num"
-jnum="podd:get_jobs_num"
-lpod="podd:logs_pod"
-apod="podd:attach_pod"
-dpod="podd:delete_pod"
-dpods="podd:delete_all_pods"
-cpod="podd:create_pod"
-djob="podd:delete_job"
-djobs="podd:delete_all_jobs"
-cjob="podd:create_job"
+podd="src.podd:cli"
+plist="src.podd:get_pods_list"
+jlist="src.podd:get_jobs_list"
+pnum="src.podd:get_pods_num"
+jnum="src.podd:get_jobs_num"
+lpod="src.podd:logs_pod"
+apod="src.podd:attach_pod"
+dpod="src.podd:delete_pod"
+dpods="src.podd:delete_all_pods"
+cpod="src.podd:create_pod"
+djob="src.podd:delete_job"
+djobs="src.podd:delete_all_jobs"
+cjob="src.podd:create_job"

@@ -71,11 +71,11 @@ def create_pod(ngpu, cpu, memory, template, exp, args):
         # exp = nested_dict().update(json.load(open(exp, 'r')))
         yml_dict = yaml.load(open(template, 'r'), Loader=yaml.FullLoader)
         yml_dict["metadata"]["name"] = name
-        yml_dict["metadata"]["namespace"] = "default" if "namespace" not in exp else exp["namespace"]
+        yml_dict["metadata"]["namespace"] = getpass.getuser() if "namespace" not in exp else exp["namespace"]
         
         yml_dict["metadata"]["labels"] = yml_dict["metadata"]["labels"] if "labels" in yml_dict["metadata"] else {}
         
-        yml_dict["metadata"]["labels"]["app"] = "default" if "labels" not in exp else exp["labels"]
+        yml_dict["metadata"]["labels"]["app"] = getpass.getuser() if "labels" not in exp else exp["labels"]
         
         yml_dict["spec"]["containers"][0]["image"] = yml_dict["spec"]["containers"]["image"] if "image" not in exp else exp["image"]
         yml_dict["spec"]["containers"][0]["args"] = ["bash"] if "cmd" not in exp else [exp["cmd"]]

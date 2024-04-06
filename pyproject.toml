@@ -12,8 +12,6 @@ dependencies = [
 ]
 
 
-[project.optional-dependencies]
-
 
 [project.scripts]
 podd="podd:cli"

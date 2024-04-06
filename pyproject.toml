@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+version = "0.0.1"
+name = "podd"
+
+requires-python = ">=3.6"
+
+dependencies = [
+]
+
+
+[project.optional-dependencies]
+
+
+[project.scripts]
+podd="podd:cli"
+plist="podd:get_pods_list"
+jlist="podd:get_jobs_list"
+pnum="podd:get_pods_num"
+jnum="podd:get_jobs_num"
+lpod="podd:logs_pod"
+apod="podd:attach_pod"
+dpod="podd:delete_pod"
+dpods="podd:delete_all_pods"
+cpod="podd:create_pod"
+djob="podd:delete_job"
+djobs="podd:delete_all_jobs"
+cjob="podd:create_job"

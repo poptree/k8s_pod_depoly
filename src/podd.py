@@ -16,12 +16,12 @@ def cli():
     pass
 
 @click.command()
-@click.option('-n', '--namespace', default=None)
+@click.option('-n', '--namespace', default="default")
 def get_pods_list(namespace):
     os.system(f'export KUBECONFIG=/etc/kubernetes/admin.conf && kubectl get pods --namespace {getpass.getuser() if namespace is None else namespace}')
 
 @click.command()
-@click.option('-n', '--namespace', default=None)
+@click.option('-n', '--namespace', default="default")
 def get_pods_num(namespace):
     out_pods_str = subprocess.getoutput(f'export KUBECONFIG=/etc/kubernetes/admin.conf && kubectl get pods --namespace {getpass.getuser() if namespace is None else namespace} | wc -l')
     out_jobs_str = subprocess.getoutput(f'export KUBECONFIG=/etc/kubernetes/admin.conf && kubectl get jobs --namespace {getpass.getuser() if namespace is None else namespace} | wc -l')
@@ -35,6 +35,7 @@ def get_pods_num(namespace):
     else:
       print(0)
       return 0
+
 
 import subprocess
 
@@ -66,7 +67,7 @@ def get_gpu_usage():
 
 @click.command()
 @click.option('-n', '--ngpu', default=1)
-@click.option('-ns', '--namespace', default=None)
+@click.option('-ns', '--namespace', default="default")
 @click.option('-c', '--cpu', default="16")
 @click.option('-m', '--memory', default="32Gi")
 @click.option('-t', '--template', default=None)
@@ -155,124 +156,33 @@ spec:\n\
 
 @click.command()
 @click.argument('name')
-@click.option('-n', '--namespace', default=None)
+@click.option('-n', '--namespace', default="default")
 def delete_pod(name,namespace):
     os.system(f'export KUBECONFIG=/etc/kubernetes/admin.conf && kubectl delete pod {name} --namespace {getpass.getuser() if namespace is None else namespace} &')
 
 @click.command()
-@click.option('-n', '--namespace', default=None)
-def delete_all_pods(namespace):
-    os.system(f'export KUBECONFIG=/etc/kubernetes/admin.conf && kubectl delete pods --all --namespace {getpass.getuser() if namespace is None else namespace} &')
-
-@click.command()
 @click.argument('name')
-@click.option('-n', '--namespace', default=None)
+@click.option('-n', '--namespace', default="default")
 def attach_pod(name,namespace):
     os.system(f'export KUBECONFIG=/etc/kubernetes/admin.conf && kubectl exec {name} --namespace {getpass.getuser() if namespace is None else namespace} -it -- /bin/bash')
 
 @click.command()
 @click.argument('name')
-@click.option('-n', '--namespace', default=None)
+@click.option('-n', '--namespace', default="default")
 def logs_pod(name,namespace):
     os.system(f'export KUBECONFIG=/etc/kubernetes/admin.conf && kubectl logs {name} --namespace {getpass.getuser() if namespace is None else namespace}')
 
-@click.command()
-@click.option('-n', '--namespace', default=None)
-def get_jobs_list(namespace):
-    os.system(f'export KUBECONFIG=/etc/kubernetes/admin.conf && kubectl get jobs --namespace {getpass.getuser() if namespace is None else namespace}')
 
-@click.command()
-@click.option('-n', '--namespace', default=None)
-def get_jobs_num(namespace):
-    out_jobs_str = subprocess.getoutput(f'export KUBECONFIG=/etc/kubernetes/admin.conf && kubectl get jobs --namespace {getpass.getuser() if namespace is None else namespace} | wc -l')
-    if 'No' in out_jobs_str:
-      print(0)
-      return 0
-    else:
-      print(int(out_jobs_str) - 1)
-      return int(out_jobs_str) - 1
 
-@click.command()
-@click.option('-n', '--ngpu', default=1)
-@click.argument('exp')
-def create_job(ngpu, exp):
-    out_jobs_str = subprocess.getoutput(f'export KUBECONFIG=/etc/kubernetes/admin.conf && kubectl get jobs --namespace {getpass.getuser()} | wc -l')
-    if 'No' not in out_jobs_str:
-      jobs_num = int(out_jobs_str)
-      if jobs_num > MAX_JOBS_PER_USER:
-        print(f'\nSORRY, you only can have {MAX_JOBS_PER_USER} Pods at the same time.\n\nCurrent pods:')
-        os.system(f'export KUBECONFIG=/etc/kubernetes/admin.conf && kubectl get jobs --namespace {getpass.getuser()}')
-        return
 
-    exp = json.load(open(exp, 'r'))
-    name = getpass.getuser() + '-' + exp['name'] + datetime.now().strftime("-%m-%d-%H-%M-%S")   
-    yml_str = f"apiVersion: batch/v1\n\
-kind: Job\n\
-metadata:\n\
-  namespace: {getpass.getuser()}\n\
-  name: {name}\n\
-  labels:\n\
-    app: {getpass.getuser()}\n\
-spec:\n\
-  ttlSecondsAfterFinished: 5\n\
-  backoffLimit: 120\n\
-  template:\n\
-    spec:\n\
-      restartPolicy: Never\n\
-      dnsPolicy: ClusterFirst\n\
-      schedulerName: default-scheduler\n\
-      tolerations:\n\
-        - key: nvidia.com/gpu\n\
-          operator: Exists\n\
-          effect: NoSchedule\n\
-      volumes:\n\
-        - name: algo-nas\n\
-          hostPath:\n\
-              path: /mnt/nas\n\
-        - name: dshm\n\
-          emptyDir:\n\
-              medium: Memory\n\
-      containers:\n\
-        - name: container\n\
-          command: [ '/bin/bash', '-c', '--' ]\n\
-          args: [ 'cd {exp['folder']} && {exp['cmd']}' ]\n\
-          image: {exp['image']}\n\
-          resources:\n\
-              limits:\n\
-                nvidia.com/gpu: {ngpu}\n\
-          volumeMounts:\n\
-            - mountPath: /dev/shm\n\
-              name: dshm\n\
-            - mountPath: /mnt/nas\n\
-              name: algo-nas"
-    with open('tmp.yml', 'w') as f:
-        f.write(yml_str)
-    print('Creating a Job with config\n' + yaml.dump(exp, indent=2))
-    os.system('export KUBECONFIG=/etc/kubernetes/admin.conf && kubectl apply -f tmp.yml && rm -rf tmp.yml')
 
-@click.command()
-@click.argument('name')
-@click.option('-n', '--namespace', default=None)
-def delete_job(name, namespace):
-    os.system(f'export KUBECONFIG=/etc/kubernetes/admin.conf && kubectl delete job {name}  --namespace {getpass.getuser() if namespace is None else namespace} &')
-
-@click.command()
-@click.option('-n', '--namespace', default=None)
-def delete_all_jobs(namespace):
-    os.system(f'export KUBECONFIG=/etc/kubernetes/admin.conf && kubectl delete jobs --all --namespace {getpass.getuser() if namespace is None else namespace} &')
 
 cli.add_command(get_pods_list)
 cli.add_command(get_pods_num)
 cli.add_command(create_pod)
 cli.add_command(delete_pod)
-cli.add_command(delete_all_pods)
 cli.add_command(attach_pod)
 cli.add_command(logs_pod)
-cli.add_command(get_jobs_list)
-cli.add_command(get_jobs_num)
-cli.add_command(create_job)
-cli.add_command(delete_job)
-cli.add_command(delete_all_jobs)
 cli.add_command(get_gpu_usage)
 
 if __name__ == '__main__':

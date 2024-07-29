@@ -36,12 +36,44 @@ def get_pods_num(namespace):
       print(0)
       return 0
 
-
+import subprocess
 
 @click.command()
 def get_gpu_usage():
-    out_pods_str = subprocess.getoutput(f'kubectl describe nodes  |  tr -d '\000' | sed -n -e '/^Name/,/Roles/p' -e '/^Capacity/,/Allocatable/p' -e '/^Allocated resources/,/Events/p'  | grep -e Name  -e  nvidia.com  | perl -pe 's/\n//'  |  perl -pe 's/Name:/\n/g' | sed 's/nvidia.com\/gpu:\?//g'  | sed '1s/^/Node Available(GPUs)  Used(GPUs)/' | sed 's/$/ 0 0 0/'  | awk '{print $1, $2, $3}'  | column -t')
-    print(out_pods_str)
+  try:
+    # 执行 kubectl 命令并获取输出
+    output = subprocess.getoutput("export KUBECONFIG=/etc/kubernetes/admin.conf kubectl describe nodes")
+    
+    # 处理节点信息
+    lines = output.splitlines()
+
+    # 用于存储最终结果的列表
+    gpu_usage = []
+
+    # 遍历输出行
+    capturing = False
+    for line in lines:
+      if "Name:" in line:
+        capturing = True  # 开始捕获节点信息
+      if capturing:
+        if "Roles" in line:
+          break  # 停止捕获
+        if "nvidia.com/gpu" in line:
+          # 处理每行 GPU 数量
+          node_name = line.split()[0]  # 获取节点名称
+          available_gpus = next((line.split()[1] for line in lines if 'Allocatable' in line), '0')
+          used_gpus = next((line.split()[1] for line in lines if 'Allocated resources' in line), '0')
+          gpu_usage.append((node_name, available_gpus, used_gpus))
+
+    # 打印结果
+    print("Node Available(GPUs)  Used(GPUs)")
+    for node, available, used in gpu_usage:
+      print(f"{node}  {available}  {used}")
+
+  except subprocess.CalledProcessError as e:
+    print("An error occurred while executing the command:", e)
+
+
 
 @click.command()
 @click.option('-n', '--ngpu', default=1)

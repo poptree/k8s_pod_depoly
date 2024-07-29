@@ -36,6 +36,13 @@ def get_pods_num(namespace):
       print(0)
       return 0
 
+
+
+@click.command()
+def get_gpu_usage():
+    out_pods_str = subprocess.getoutput(f'kubectl describe nodes  |  tr -d '\000' | sed -n -e '/^Name/,/Roles/p' -e '/^Capacity/,/Allocatable/p' -e '/^Allocated resources/,/Events/p'  | grep -e Name  -e  nvidia.com  | perl -pe 's/\n//'  |  perl -pe 's/Name:/\n/g' | sed 's/nvidia.com\/gpu:\?//g'  | sed '1s/^/Node Available(GPUs)  Used(GPUs)/' | sed 's/$/ 0 0 0/'  | awk '{print $1, $2, $3}'  | column -t')
+    print(out_pods_str)
+
 @click.command()
 @click.option('-n', '--ngpu', default=1)
 @click.option('-ns', '--namespace', default=None)
@@ -245,6 +252,7 @@ cli.add_command(get_jobs_num)
 cli.add_command(create_job)
 cli.add_command(delete_job)
 cli.add_command(delete_all_jobs)
+cli.add_command(get_gpu_usage)
 
 if __name__ == '__main__':
     cli()

@@ -15,7 +15,7 @@ dependencies = [
 include = ["src"]
 
 [project.scripts]
-podd="src.podd:create_pod"
+cpod="src.podd:create_pod"
 plist="src.podd:get_pods_list"
 jlist="src.podd:get_jobs_list"
 pnum="src.podd:get_pods_num"

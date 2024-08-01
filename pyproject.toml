@@ -15,11 +15,12 @@ dependencies = [
 include = ["src"]
 
 [project.scripts]
-podd="src.podd:cli"
+podd="src.podd:create_pod"
 plist="src.podd:get_pods_list"
 jlist="src.podd:get_jobs_list"
 pnum="src.podd:get_pods_num"
 jnum="src.podd:get_jobs_num"
+cpod="src.podd:logs_pod"
 lpod="src.podd:logs_pod"
 apod="src.podd:attach_pod"
 dpod="src.podd:delete_pod"
